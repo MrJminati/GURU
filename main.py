@@ -1,10 +1,11 @@
 import requests
 import time
 import os
+
 # ===== CONFIG =====
-ETHERSCAN_API_KEY = os.getenv "QSVQMA9ZW6IR63DKICSUGIVS3JWTVNF97J"
-TELEGRAM_BOT_TOKEN = os.getenv "8550461382:AAG17tQfCcEcmFL4Yz2te70EhaWxwJwQzkU"
-TELEGRAM_CHAT_ID = os.getenv "-1003830537991"
+ETHERSCAN_API_KEY = os.getenv("ETHERSCAN_API_KEY")
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
 EXCHANGES = {
     "binance": [
