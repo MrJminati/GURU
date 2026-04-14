@@ -48,7 +48,21 @@ def get_eth_price():
     except:
         return 3000
 
-# ===== LOAD / SAVE =====
+# ===== TOKEN PRICE (DEXSCREENER) =====
+def get_token_price(contract_address):
+    try:
+        url = f"https://api.dexscreener.com/latest/dex/tokens/{contract_address}"
+        res = requests.get(url).json()
+
+        pairs = res.get("pairs", [])
+        if not pairs:
+            return None
+
+        return float(pairs[0]["priceUsd"])
+    except:
+        return None
+
+# ===== STORAGE =====
 def save_wallet_stats():
     with open(WALLET_STATS_FILE, "w") as f:
         json.dump(wallet_stats, f)
@@ -104,7 +118,6 @@ def get_latest_block():
     }
 
     res = requests.get(url, params=params).json()
-
     if "result" not in res:
         print("API Error:", res)
         return 0
@@ -123,7 +136,6 @@ def get_block_transactions(block_number):
     }
 
     res = requests.get(url, params=params).json()
-
     if "result" not in res:
         print("API Error:", res)
         return []
@@ -154,16 +166,22 @@ def detect_entry(wallet):
         try:
             value = int(tx["value"]) / (10 ** int(tx["tokenDecimal"]))
             token = tx["tokenSymbol"]
+            contract = tx["contractAddress"]
 
             if value > 100000:
-                price = get_eth_price()
+                price = get_token_price(contract)
+                if price is None:
+                    continue
 
                 if wallet not in wallet_trades:
                     wallet_trades[wallet] = {}
 
-                wallet_trades[wallet][token] = price
+                wallet_trades[wallet][contract] = {
+                    "token": token,
+                    "entry_price": price
+                }
 
-                key = wallet + token + "BUY"
+                key = wallet + contract + "BUY"
 
                 if is_new_signal(key):
                     msg = f"""
@@ -171,7 +189,8 @@ def detect_entry(wallet):
 
 Wallet: `{wallet}`
 Token: *{token}*
-Amount: {value:.2f}
+
+💰 Price: ${price:.6f}
 
 Smart money accumulating 🚀
 """
@@ -188,38 +207,46 @@ def detect_exit(wallet):
         try:
             to_addr = tx["to"].lower()
             token = tx["tokenSymbol"]
+            contract = tx["contractAddress"]
 
             if to_addr in EXCHANGE_WALLETS:
 
-                if wallet in wallet_trades and token in wallet_trades[wallet]:
-                    entry_price = wallet_trades[wallet][token]
-                    exit_price = get_eth_price()
+                price = get_token_price(contract)
+                if price is None:
+                    continue
 
-                    profit = exit_price - entry_price
+                if wallet in wallet_trades and contract in wallet_trades[wallet]:
+                    entry_data = wallet_trades[wallet][contract]
+                    entry_price = entry_data["entry_price"]
+                    exit_price = price
+
+                    roi = ((exit_price - entry_price) / entry_price) * 100
 
                     if wallet not in wallet_stats:
                         wallet_stats[wallet] = {"wins": 0, "losses": 0}
 
-                    if profit > 0:
+                    if roi > 0:
                         wallet_stats[wallet]["wins"] += 1
                     else:
                         wallet_stats[wallet]["losses"] += 1
 
-                key = wallet + token + "SELL"
-
-                if is_new_signal(key):
                     exchange = EXCHANGE_NAMES.get(to_addr, "Exchange")
 
-                    msg = f"""
+                    key = wallet + contract + "SELL"
+
+                    if is_new_signal(key):
+                        msg = f"""
 🔴 *EXIT SIGNAL*
 
 Wallet: `{wallet}`
 Token: *{token}*
 
+📊 ROI: {roi:.2f}%
 🏦 {exchange}
-Possible dump incoming ⚠️
+
+Smart money exit ⚠️
 """
-                    send_telegram(msg)
+                        send_telegram(msg)
 
         except:
             continue
