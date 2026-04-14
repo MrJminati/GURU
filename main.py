@@ -30,25 +30,39 @@ def send_telegram(msg):
 
 # ===== BLOCK DATA =====
 def get_latest_block():
-    url = "https://api.etherscan.io/api"
+    url = "https://api.etherscan.io/v2/api"
     params = {
+        "chainid": 1,
         "module": "proxy",
         "action": "eth_blockNumber",
         "apikey": ETHERSCAN_API_KEY
     }
-    res = requests.get(url, params=params).json()
-    return int(res["result"], 16)
 
+    res = requests.get(url, params=params).json()
+
+    if "result" not in res:
+        print("API Error:", res)
+        return 0
+
+    return int(res["result"], 16)
+    
 def get_block_transactions(block_number):
-    url = "https://api.etherscan.io/api"
+    url = "https://api.etherscan.io/v2/api"
     params = {
+        "chainid": 1,
         "module": "proxy",
         "action": "eth_getBlockByNumber",
         "tag": hex(block_number),
         "boolean": "true",
         "apikey": ETHERSCAN_API_KEY
     }
+
     res = requests.get(url, params=params).json()
+
+    if "result" not in res:
+        print("API Error:", res)
+        return []
+
     return res["result"]["transactions"]
 
 # ===== TOKEN TRANSFERS =====
