@@ -25,7 +25,11 @@ seen_signals = set()
 # ===== TELEGRAM =====
 def send_telegram(msg):
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-    data = {"chat_id": TELEGRAM_CHAT_ID, "text": msg}
+    data = {
+        "chat_id": TELEGRAM_CHAT_ID,
+        "text": msg,
+        "parse_mode": "Markdown"
+    }
     requests.post(url, data=data)
 
 # ===== BLOCK DATA =====
@@ -194,12 +198,17 @@ while True:
                     update_score(from_addr, value_eth)
                     update_score(to_addr, value_eth)
 
-                    msg = f"""
-🐋 Whale Transaction
+                    tx_hash = tx["hash"]
 
-Amount: {value_eth:.2f} ETH
-From: {from_addr}
-To: {to_addr}
+msg = f"""
+🐋 *Whale Transaction*
+
+💰 Amount: *{value_eth:.2f} ETH*
+
+👤 [From](https://etherscan.io/address/{from_addr})
+➡️ [To](https://etherscan.io/address/{to_addr})
+
+🔗 [View Transaction](https://etherscan.io/tx/{tx_hash})
 """
                     send_telegram(msg)
 
