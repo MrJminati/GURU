@@ -201,15 +201,14 @@ while True:
                     tx_hash = tx["hash"]
 
 msg = f"""
-🐋 *Whale Transaction*
+🐋 Whale Transaction
 
-💰 Amount: *{value_eth:.2f} ETH*
+Amount: {value_eth:.2f} ETH
 
-👤 [From](https://etherscan.io/address/{from_addr})
-➡️ [To](https://etherscan.io/address/{to_addr})
+From: https://etherscan.io/address/{from_addr}
+To: https://etherscan.io/address/{to_addr}
 
-🔗 [View Transaction](https://etherscan.io/tx/{tx_hash})
-
+Tx: https://etherscan.io/tx/{tx_hash}
 """
                     send_telegram(msg)
 
