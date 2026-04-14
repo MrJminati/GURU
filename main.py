@@ -220,5 +220,5 @@ Tx: https://etherscan.io/tx/{tx_hash}
         time.sleep(20)
 
     except Exception as e:
-        print("Error:", e)
+        print(e)
         time.sleep(10)
