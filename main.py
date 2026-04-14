@@ -8,14 +8,18 @@ ETHERSCAN_API_KEY = os.getenv("ETHERSCAN_API_KEY")
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
-MIN_ETH = 50  # whale threshold
-
+MIN_ETH = 50
 SMART_WALLETS_FILE = "smart_wallets.json"
 
 # ===== EXCHANGE WALLETS =====
 EXCHANGE_WALLETS = {
-    "0x28c6c06298d514db089934071355e5743bf21d60",
-    "0x503828976d22510aad0201ac7ec88293211d23da"
+    "0x28c6c06298d514db089934071355e5743bf21d60",  # Binance
+    "0x503828976d22510aad0201ac7ec88293211d23da"   # Coinbase
+}
+
+EXCHANGE_NAMES = {
+    "0x28c6c06298d514db089934071355e5743bf21d60": "Binance",
+    "0x503828976d22510aad0201ac7ec88293211d23da": "Coinbase"
 }
 
 # ===== MEMORY =====
@@ -32,7 +36,16 @@ def send_telegram(msg):
     }
     requests.post(url, data=data)
 
-# ===== BLOCK DATA =====
+# ===== ETH PRICE =====
+def get_eth_price():
+    try:
+        url = "https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd"
+        res = requests.get(url).json()
+        return res["ethereum"]["usd"]
+    except:
+        return 3000
+
+# ===== BLOCK DATA (ETHERSCAN V2) =====
 def get_latest_block():
     url = "https://api.etherscan.io/v2/api"
     params = {
@@ -49,7 +62,8 @@ def get_latest_block():
         return 0
 
     return int(res["result"], 16)
-    
+
+
 def get_block_transactions(block_number):
     url = "https://api.etherscan.io/v2/api"
     params = {
@@ -71,8 +85,9 @@ def get_block_transactions(block_number):
 
 # ===== TOKEN TRANSFERS =====
 def get_token_transfers(wallet):
-    url = "https://api.etherscan.io/api"
+    url = "https://api.etherscan.io/v2/api"
     params = {
+        "chainid": 1,
         "module": "account",
         "action": "tokentx",
         "address": wallet,
@@ -126,10 +141,10 @@ def detect_entry(wallet):
 
                 if is_new_signal(key):
                     msg = f"""
-🟢 ENTRY SIGNAL
+🟢 *ENTRY SIGNAL*
 
-Wallet: {wallet}
-Token: {token}
+Wallet: `{wallet}`
+Token: *{token}*
 Amount: {value:.2f}
 
 Smart money accumulating 🚀
@@ -151,12 +166,15 @@ def detect_exit(wallet):
                 key = wallet + token + "SELL"
 
                 if is_new_signal(key):
+                    exchange = EXCHANGE_NAMES.get(to_addr, "Exchange")
+
                     msg = f"""
-🔴 EXIT SIGNAL
+🔴 *EXIT SIGNAL*
 
-Wallet: {wallet}
-Token: {token}
+Wallet: `{wallet}`
+Token: *{token}*
 
+🏦 {exchange}
 Possible dump incoming ⚠️
 """
                     send_telegram(msg)
@@ -168,7 +186,6 @@ def track_smart_wallets():
     wallets = load_smart_wallets()
 
     for wallet in wallets:
-        print(f"Tracking: {wallet}")
         detect_entry(wallet)
         detect_exit(wallet)
 
@@ -190,27 +207,52 @@ while True:
                 value_eth = int(tx["value"], 16) / 10**18
 
                 if value_eth >= MIN_ETH:
-                    from_addr = tx["from"]
-                    to_addr = tx["to"]
+                    from_addr = tx["from"].lower()
+                    to_addr = tx["to"].lower() if tx["to"] else "unknown"
+                    tx_hash = tx["hash"]
 
-                    print(f"🐋 Whale TX: {value_eth:.2f} ETH")
+                    eth_price = get_eth_price()
+                    usd_value = value_eth * eth_price
+
+                    signal = "Neutral"
+                    exchange = None
+
+                    if to_addr in EXCHANGE_WALLETS:
+                        signal = "🔴 SELL PRESSURE"
+                        exchange = EXCHANGE_NAMES.get(to_addr)
+
+                    elif from_addr in EXCHANGE_WALLETS:
+                        signal = "🟢 BUY PRESSURE"
+                        exchange = EXCHANGE_NAMES.get(from_addr)
+
+                    tag = "🐋 Whale"
+                    if usd_value > 500000:
+                        tag = "🔥 Mega Whale"
+
+                    key = tx_hash
+
+                    if is_new_signal(key):
+                        msg = f"""
+{tag} *ALERT*
+
+💰 ${usd_value:,.0f} ({value_eth:.2f} ETH)
+📊 Signal: {signal}
+"""
+
+                        if exchange:
+                            msg += f"\n🏦 Exchange: *{exchange}*\n"
+
+                        msg += f"""
+👤 [From](https://etherscan.io/address/{from_addr})
+➡️ [To](https://etherscan.io/address/{to_addr})
+
+🔗 [View Transaction](https://etherscan.io/tx/{tx_hash})
+"""
+
+                        send_telegram(msg)
 
                     update_score(from_addr, value_eth)
                     update_score(to_addr, value_eth)
-
-                    tx_hash = tx["hash"]
-
-msg = f"""
-🐋 Whale Transaction
-
-Amount: {value_eth:.2f} ETH
-
-From: https://etherscan.io/address/{from_addr}
-To: https://etherscan.io/address/{to_addr}
-
-Tx: https://etherscan.io/tx/{tx_hash}
-"""
-                    send_telegram(msg)
 
             save_smart_wallets()
             last_block = current_block
@@ -220,5 +262,5 @@ Tx: https://etherscan.io/tx/{tx_hash}
         time.sleep(20)
 
     except Exception as e:
-        print(e)
+        print("Error:", e)
         time.sleep(10)
