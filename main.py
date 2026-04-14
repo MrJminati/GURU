@@ -209,6 +209,7 @@ msg = f"""
 ➡️ [To](https://etherscan.io/address/{to_addr})
 
 🔗 [View Transaction](https://etherscan.io/tx/{tx_hash})
+
 """
                     send_telegram(msg)
 
