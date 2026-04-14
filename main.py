@@ -10,11 +10,12 @@ TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
 MIN_ETH = 50
 SMART_WALLETS_FILE = "smart_wallets.json"
+WALLET_STATS_FILE = "wallet_stats.json"
 
 # ===== EXCHANGE WALLETS =====
 EXCHANGE_WALLETS = {
-    "0x28c6c06298d514db089934071355e5743bf21d60",  # Binance
-    "0x503828976d22510aad0201ac7ec88293211d23da"   # Coinbase
+    "0x28c6c06298d514db089934071355e5743bf21d60",
+    "0x503828976d22510aad0201ac7ec88293211d23da"
 }
 
 EXCHANGE_NAMES = {
@@ -24,6 +25,8 @@ EXCHANGE_NAMES = {
 
 # ===== MEMORY =====
 wallet_scores = {}
+wallet_stats = {}
+wallet_trades = {}
 seen_signals = set()
 
 # ===== TELEGRAM =====
@@ -45,7 +48,52 @@ def get_eth_price():
     except:
         return 3000
 
-# ===== BLOCK DATA (ETHERSCAN V2) =====
+# ===== LOAD / SAVE =====
+def save_wallet_stats():
+    with open(WALLET_STATS_FILE, "w") as f:
+        json.dump(wallet_stats, f)
+
+def load_wallet_stats():
+    global wallet_stats
+    try:
+        with open(WALLET_STATS_FILE, "r") as f:
+            wallet_stats = json.load(f)
+    except:
+        wallet_stats = {}
+
+def save_smart_wallets():
+    smart_wallets = [
+        w for w, score in wallet_scores.items()
+        if score > 200
+    ]
+    with open(SMART_WALLETS_FILE, "w") as f:
+        json.dump(smart_wallets, f)
+
+def load_smart_wallets():
+    try:
+        with open(SMART_WALLETS_FILE, "r") as f:
+            return json.load(f)
+    except:
+        return []
+
+# ===== SIGNAL FILTER =====
+def is_new_signal(key):
+    if key in seen_signals:
+        return False
+    seen_signals.add(key)
+    return True
+
+# ===== WIN RATE =====
+def get_wallet_score(wallet):
+    stats = wallet_stats.get(wallet, {"wins": 0, "losses": 0})
+    total = stats["wins"] + stats["losses"]
+
+    if total == 0:
+        return 0
+
+    return stats["wins"] / total
+
+# ===== ETHERSCAN V2 =====
 def get_latest_block():
     url = "https://api.etherscan.io/v2/api"
     params = {
@@ -62,7 +110,6 @@ def get_latest_block():
         return 0
 
     return int(res["result"], 16)
-
 
 def get_block_transactions(block_number):
     url = "https://api.etherscan.io/v2/api"
@@ -99,34 +146,6 @@ def get_token_transfers(wallet):
     res = requests.get(url, params=params).json()
     return res.get("result", [])[:10]
 
-# ===== SCORE SYSTEM =====
-def update_score(wallet, value_eth):
-    if wallet not in wallet_scores:
-        wallet_scores[wallet] = 0
-    wallet_scores[wallet] += value_eth
-
-def save_smart_wallets():
-    smart_wallets = [
-        w for w, score in wallet_scores.items()
-        if score > 200
-    ]
-    with open(SMART_WALLETS_FILE, "w") as f:
-        json.dump(smart_wallets, f)
-
-def load_smart_wallets():
-    try:
-        with open(SMART_WALLETS_FILE, "r") as f:
-            return json.load(f)
-    except:
-        return []
-
-# ===== SIGNAL FILTER =====
-def is_new_signal(key):
-    if key in seen_signals:
-        return False
-    seen_signals.add(key)
-    return True
-
 # ===== ENTRY SIGNAL =====
 def detect_entry(wallet):
     txs = get_token_transfers(wallet)
@@ -137,6 +156,13 @@ def detect_entry(wallet):
             token = tx["tokenSymbol"]
 
             if value > 100000:
+                price = get_eth_price()
+
+                if wallet not in wallet_trades:
+                    wallet_trades[wallet] = {}
+
+                wallet_trades[wallet][token] = price
+
                 key = wallet + token + "BUY"
 
                 if is_new_signal(key):
@@ -150,6 +176,7 @@ Amount: {value:.2f}
 Smart money accumulating 🚀
 """
                     send_telegram(msg)
+
         except:
             continue
 
@@ -163,6 +190,21 @@ def detect_exit(wallet):
             token = tx["tokenSymbol"]
 
             if to_addr in EXCHANGE_WALLETS:
+
+                if wallet in wallet_trades and token in wallet_trades[wallet]:
+                    entry_price = wallet_trades[wallet][token]
+                    exit_price = get_eth_price()
+
+                    profit = exit_price - entry_price
+
+                    if wallet not in wallet_stats:
+                        wallet_stats[wallet] = {"wins": 0, "losses": 0}
+
+                    if profit > 0:
+                        wallet_stats[wallet]["wins"] += 1
+                    else:
+                        wallet_stats[wallet]["losses"] += 1
+
                 key = wallet + token + "SELL"
 
                 if is_new_signal(key):
@@ -178,6 +220,7 @@ Token: *{token}*
 Possible dump incoming ⚠️
 """
                     send_telegram(msg)
+
         except:
             continue
 
@@ -186,11 +229,16 @@ def track_smart_wallets():
     wallets = load_smart_wallets()
 
     for wallet in wallets:
-        detect_entry(wallet)
-        detect_exit(wallet)
+        score = get_wallet_score(wallet)
 
-# ===== MAIN LOOP =====
+        if score >= 0.6:
+            detect_entry(wallet)
+            detect_exit(wallet)
+
+# ===== MAIN =====
 print("🚀 Bot Started...")
+
+load_wallet_stats()
 
 last_block = get_latest_block()
 
@@ -251,10 +299,11 @@ while True:
 
                         send_telegram(msg)
 
-                    update_score(from_addr, value_eth)
-                    update_score(to_addr, value_eth)
+                    wallet_scores[from_addr] = wallet_scores.get(from_addr, 0) + value_eth
+                    wallet_scores[to_addr] = wallet_scores.get(to_addr, 0) + value_eth
 
             save_smart_wallets()
+            save_wallet_stats()
             last_block = current_block
 
         track_smart_wallets()
