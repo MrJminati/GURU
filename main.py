@@ -27,11 +27,3 @@ def whale_alerts():
         }
     ]
 
-@app.on_event("startup")
-def run_bot():
-    import threading
-    from bot import start_bot
-
-    thread = threading.Thread(target=start_bot)
-    thread.daemon = True
-    thread.start()
