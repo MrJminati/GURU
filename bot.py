@@ -33,8 +33,10 @@ def send_telegram(msg):
 
 # ===== GET TRANSACTIONS =====
 def get_transactions(wallet):
-    url = "https://api.etherscan.io/api"
+    url = "https://api.etherscan.io/v2/api"
+
     params = {
+        "chainid": 1,
         "module": "account",
         "action": "txlist",
         "address": wallet,
@@ -46,8 +48,8 @@ def get_transactions(wallet):
 
     res = requests.get(url, params=params).json()
 
-    if res["status"] != "1":
-        print("Etherscan error:", res.get("message"))
+    if res.get("status") != "1":
+        print("Etherscan error:", res)
         return []
 
     return res["result"][:5]
