@@ -11,8 +11,9 @@ TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 wallets = [
     "0x28C6c06298d514Db089934071355E5743bf21d60",  # Binance
     "0x71660c4005ba85c37ccec55d0c4493e6fe775d3a",  # Coinbase
+    "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",  # Bitfinex whale
+    "0x66f820a414680b5bcda5eeca5dea238543f42054",  # known active whale
 ]
-
 MIN_ETH = 5  # minimum ETH for whale
 
 # ===== SHARED DATA (FOR API) =====
@@ -42,6 +43,7 @@ def get_transactions(wallet):
         "address": wallet,
         "startblock": 0,
         "endblock": 99999999,
+         "offset": 10,
         "sort": "desc",
         "apikey": ETHERSCAN_API_KEY
     }
