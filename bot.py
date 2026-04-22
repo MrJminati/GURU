@@ -125,6 +125,18 @@ Tx: https://etherscan.io/tx/{tx_hash}
                                 "amount": usd_value,
                                 "signal": signal
                             }).execute()
+                        supabase.table("signals").insert({
+                            "type": "entry",
+                            "wallet": wallet,
+                            "token": token,
+                            "price": price
+                        }).execute()
+                        supabase.table("signals").insert({
+                            "type": "exit",
+                            "wallet": wallet,
+                            "token": token,
+                            "roi": roi
+                        }).execute()
 
             time.sleep(60)
 
