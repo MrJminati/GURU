@@ -1,6 +1,12 @@
 import requests
 import time
 import os
+from supabase import create_client
+
+SUPABASE_URL = "your_url"
+SUPABASE_KEY = "your_key"
+
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # ===== CONFIG =====
 ETHERSCAN_API_KEY = os.getenv("ETHERSCAN_API_KEY")
