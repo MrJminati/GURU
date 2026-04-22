@@ -86,6 +86,11 @@ def start_bot():
                             signal = "🔴 SELL (Outflow)"
                         else:
                             signal = "🟢 BUY (Inflow)"
+                            supabase.table("signals").insert({
+                                "wallet": from_addr,
+                                "amount": usd_value,
+                                "signal": signal
+                            }).execute()
 
                         # ===== STORE FOR API =====
                         whale_data = {
