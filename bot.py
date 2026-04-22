@@ -86,12 +86,7 @@ def start_bot():
                             signal = "🔴 SELL (Outflow)"
                         else:
                             signal = "🟢 BUY (Inflow)"
-                            supabase.table("signals").insert({
-                                "wallet": from_addr,
-                                "amount": usd_value,
-                                "signal": signal
-                            }).execute()
-
+                            
                         # ===== STORE FOR API =====
                         whale_data = {
                             "type": "Whale",
@@ -118,6 +113,12 @@ To: {to_addr}
 Tx: https://etherscan.io/tx/{tx_hash}
 """
                         send_telegram(message)
+                        
+                        supabase.table("signals").insert({
+                                "wallet": from_addr,
+                                "amount": usd_value,
+                                "signal": signal
+                            }).execute()
 
             time.sleep(60)
 
