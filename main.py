@@ -1,30 +1,31 @@
 from fastapi import FastAPI
-import threading
-from bot import start_bot, shared_whales
+from supabase import create_client
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 
-from fastapi.middleware.cors import CORSMiddleware
-
+# Allow frontend to access
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # allow all (for now)
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# 🚀 Start bot when server starts
-@app.on_event("startup")
-def run_bot():
-    thread = threading.Thread(target=start_bot)
-    thread.daemon = True
-    thread.start()
+# Supabase connection
+SUPABASE_URL = "YOUR_URL"
+SUPABASE_KEY = "YOUR_KEY"
 
-@app.get("/")
-def home():
-    return {"status": "running"}
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-@app.get("/whale-alerts")
-def whale_alerts():
-    return shared_whales[::-1]  # latest first
+# API endpoint
+@app.get("/signals")
+def get_signals():
+    res = supabase.table("signals") \
+        .select("*") \
+        .order("id", desc=True) \
+        .limit(50) \
+        .execute()
+
+    return res.data
