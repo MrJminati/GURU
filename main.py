@@ -326,6 +326,15 @@ while True:
 
                         send_telegram(msg)
 
+                    import requests
+
+                    requests.post("http://localhost:8000/add_signal", json={
+                        "wallet": from_addr,
+                        "amount": usd_value,
+                        "type": signal,
+                        "time": "just now"
+                    })
+
                     wallet_scores[from_addr] = wallet_scores.get(from_addr, 0) + value_eth
                     wallet_scores[to_addr] = wallet_scores.get(to_addr, 0) + value_eth
 
