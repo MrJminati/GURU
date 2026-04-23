@@ -2,7 +2,7 @@ import requests
 import time
 import os
 import json
-
+import requests
 
 # ===== CONFIG =====
 ETHERSCAN_API_KEY = os.getenv("ETHERSCAN_API_KEY")
@@ -325,16 +325,21 @@ while True:
 🔗 [View Transaction](https://etherscan.io/tx/{tx_hash})
 """
 
-                        send_telegram(msg)
-                    try:
-                        requests.post("https://studious-acorn-45vr9p9wqvxhqr95-8000.app.github.dev/add_signal", json={
-                            "wallet": from_address,
-                            "amount": usd_value,
-                            "type": signal_type,   # BUY / SELL / TRANSFER
-                            "time": "just now"
-                        })
-                    except Exception as e:
-                    print("API Error:", e)
+                       
+                    send_telegram(msg)
+
+try:
+    requests.post(
+        "https://studious-acorn-45vr9p9wqvxhqr95-8000.app.github.dev/add_signal",
+        json={
+            "wallet": from_addr,
+            "amount": usd_value,
+            "type": signal_type,   # BUY / SELL / TRANSFER
+            "time": "just now"
+        }
+    )
+except Exception as e:
+    print("API Error:", e)
 
                     wallet_scores[from_addr] = wallet_scores.get(from_addr, 0) + value_eth
                     wallet_scores[to_addr] = wallet_scores.get(to_addr, 0) + value_eth
@@ -345,6 +350,6 @@ while True:
 
         track_smart_wallets()
         
-         except Exception as e:
+        except Exception as e:
         print("API Error:", e)
         time.sleep(20)
