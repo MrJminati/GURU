@@ -350,6 +350,4 @@ while True:
 
         track_smart_wallets()
         
-        except Exception as e:
-            print("API Error:", e)
         time.sleep(20)
