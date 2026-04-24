@@ -339,7 +339,7 @@ while True:
                             }
                         )
                     except Exception as e:
-                    print("API Error:", e)
+                        print("API Error:", e)
 
                     wallet_scores[from_addr] = wallet_scores.get(from_addr, 0) + value_eth
                     wallet_scores[to_addr] = wallet_scores.get(to_addr, 0) + value_eth
@@ -351,5 +351,5 @@ while True:
         track_smart_wallets()
         
         except Exception as e:
-        print("API Error:", e)
+            print("API Error:", e)
         time.sleep(20)
