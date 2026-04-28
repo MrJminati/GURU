@@ -8,7 +8,29 @@ ETHERSCAN_API_KEY = os.getenv("ETHERSCAN_API_KEY")
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
-API_URL = os.getenv("API_URL")  # 🔥 IMPORTANT (set in Railway)
+# ===== API CONFIG =====
+API_URL = os.getenv("API_URL") or "https://guru-production-1424.up.railway.app"
+
+# ===== API SEND =====
+def send_to_api(data):
+    try:
+        url = f"{API_URL}/add_signal"
+
+        print("📡 Sending to API:", url)
+
+        res = requests.post(
+            url,
+            json=data,
+            timeout=5
+        )
+
+        print("✅ API Status:", res.status_code)
+
+        if res.status_code != 200:
+            print("❌ API Response:", res.text)
+
+    except Exception as e:
+        print("🚨 API Error:", e)
 
 MIN_ETH = 50
 SMART_WALLETS_FILE = "smart_wallets.json"
